@@ -16,6 +16,9 @@
 // own header
 #include "namespacedef.h"
 
+#include <map>
+#include <memory>
+
 // other includes
 #include "classdef.h"
 #include "classlist.h"
@@ -156,7 +159,7 @@ class NamespaceDefImpl final : public DefinitionMixin<NamespaceDefMutable>
     LinkedRefMap<NamespaceDef> m_usingDirList;
     LinkedRefMap<const Definition> m_usingDeclList;
     LinkedRefMap<const Definition> m_innerCompounds;
-    std::unique_ptr<IncludeInfo> m_incInfo;
+    std::map<std::string, IncludeInfo> m_incInfo;
 
     MemberLinkedRefMap    m_allMembers;
     MemberLists           m_memberLists;
@@ -443,58 +446,51 @@ void NamespaceDefImpl::setIncludeFile(FileDef *fd,
              const DString &includeName,bool local, bool force)
 {
   //printf("NamespaceDefImpl::setIncludeFile(%p,%s,%d,%d)\n",fd,qPrint(includeName),local,force);
-  if (!force) return; // only use header provided via \headerfile
-  if (!m_incInfo) m_incInfo = std::make_unique<IncludeInfo>();
-  if ((!includeName.empty() && m_incInfo->includeName.empty()) ||
-      (fd!=nullptr && m_incInfo->fileDef==nullptr)
-     )
+  if (!force || includeName.empty()) return; // only use header provided via \headerfile
+  auto it = m_incInfo.find(includeName.str());
+  if (it == m_incInfo.end())
   {
-    //printf("Setting file info\n");
-    m_incInfo->fileDef     = fd;
-    m_incInfo->includeName = includeName;
-    m_incInfo->kind        = local ? IncludeKind::IncludeLocal : IncludeKind::IncludeSystem;
-  }
-  if (force && !includeName.empty())
-  {
-    m_incInfo->includeName = includeName;
-    m_incInfo->kind        = local ? IncludeKind::IncludeLocal : IncludeKind::IncludeSystem;
+    m_incInfo.insert(std::make_pair(includeName.str(), IncludeInfo(fd,includeName,local ? IncludeKind::IncludeLocal : IncludeKind::IncludeSystem)));
   }
 }
 
 void NamespaceDefImpl::writeIncludeFiles(OutputList &ol) const
 {
-  if (m_incInfo)
+  if (m_incInfo.empty()) return;
+  ol.startParagraph();
+  for (const auto &kv : m_incInfo)
   {
-    DString nm=m_incInfo->includeName.empty() ?
-      (m_incInfo->fileDef ?
-       m_incInfo->fileDef->docName() : DString()
+    const IncludeInfo &incInfo = kv.second;
+    DString nm=incInfo.includeName.empty() ?
+      (incInfo.fileDef ?
+       incInfo.fileDef->docName() : DString()
       ) :
-      m_incInfo->includeName;
+      incInfo.includeName;
     if (!nm.empty())
     {
-      ol.startParagraph();
       ol.startTypewriter();
-      ol.docify(::includeStatement(SrcLangExt::Cpp,m_incInfo->kind));
-      ol.docify(::includeOpen(SrcLangExt::Cpp,m_incInfo->kind));
+      ol.docify(::includeStatement(SrcLangExt::Cpp,incInfo.kind));
+      ol.docify(::includeOpen(SrcLangExt::Cpp,incInfo.kind));
       ol.pushGeneratorState();
       ol.disable(OutputType::Html);
       ol.docify(nm);
       ol.disableAllBut(OutputType::Html);
       ol.enable(OutputType::Html);
-      if (m_incInfo->fileDef)
+      if (incInfo.fileDef)
       {
-        ol.writeObjectLink(DString(),m_incInfo->fileDef->includeName(),DString(),nm);
+        ol.writeObjectLink(DString(),incInfo.fileDef->includeName(),DString(),nm);
       }
       else
       {
         ol.docify(nm);
       }
       ol.popGeneratorState();
-      ol.docify(::includeClose(SrcLangExt::Cpp,m_incInfo->kind));
+      ol.docify(::includeClose(SrcLangExt::Cpp,incInfo.kind));
       ol.endTypewriter();
-      ol.endParagraph();
+      ol.lineBreak();
     }
   }
+  ol.endParagraph();
 }
 
 
@@ -1154,7 +1150,7 @@ void NamespaceDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::AuthorSection:
         writeAuthorSection(ol);
         break;
-      case LayoutDocEntry::ClassIncludes:
+      case LayoutDocEntry::Includes:
         writeIncludeFiles(ol);
         break;
       case LayoutDocEntry::ClassInheritanceGraph:
@@ -1171,7 +1167,6 @@ void NamespaceDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::FileExceptions:
       case LayoutDocEntry::FileNamespaces:
       case LayoutDocEntry::FileConstantGroups:
-      case LayoutDocEntry::FileIncludes:
       case LayoutDocEntry::FileIncludeGraph:
       case LayoutDocEntry::FileIncludedByGraph:
       case LayoutDocEntry::FileSourceLink:

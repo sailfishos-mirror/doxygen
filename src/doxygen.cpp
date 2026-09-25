@@ -305,6 +305,109 @@ static bool findClassRelation(
                            bool isArtificial
                           );
 
+//----------------------------------------------------------------------
+
+template<class Def>
+static void addIncludeFile(Def *def,FileDef *ifd,const Entry *root)
+{
+  AUTO_TRACE();
+  if (
+      (!root->doc.stripWhiteSpace().empty() ||
+       !root->brief.stripWhiteSpace().empty() ||
+       Config_getBool(EXTRACT_ALL)
+      ) && root->protection!=Protection::Private
+     )
+  {
+    AUTO_TRACE_ADD("includefile={}",root->includeFile);
+    //printf(">>>>>> includeFile=%s\n",qPrint(root->includeFile));
+
+    bool local=Config_getBool(FORCE_LOCAL_INCLUDES);
+    DString includeFile = root->includeFile;
+    if (!includeFile.empty() && includeFile.at(0)=='"')
+    {
+      local = true;
+      includeFile=includeFile.mid(1,includeFile.length()-2);
+    }
+    else if (!includeFile.empty() && includeFile.at(0)=='<')
+    {
+      local = false;
+      includeFile=includeFile.mid(1,includeFile.length()-2);
+    }
+
+    bool ambig = false;
+    FileDef *fd=nullptr;
+    // see if we need to include a verbatim copy of the header file
+    //printf("root->includeFile=%s\n",qPrint(root->includeFile));
+    if (!includeFile.empty() &&
+        (fd=Doxygen::inputNameLinkedMap->findFileDef(includeFile,ambig))==nullptr
+       )
+    { // explicit request
+      DString text;
+      text.sprintf("the name '%s' supplied as "
+                  "the argument of the \\class, \\struct, \\union, or \\headerfile command ",
+                  qPrint(includeFile)
+                 );
+      if (ambig) // name is ambiguous
+      {
+        text+="matches the following input files:\n";
+        text+=Doxygen::inputNameLinkedMap->showFileDefMatches(root->includeFile);
+        text+="\n";
+        text+="Please use a more specific name by "
+            "including a (larger) part of the path!";
+      }
+      else // name is not an input file
+      {
+        text+="is not an input file";
+      }
+      warn(root->fileName,root->startLine, "{}", text);
+    }
+    else if (includeFile.empty() && ifd &&
+        // see if the file extension makes sense
+        EntryType::guessSection(ifd->name()).isHeader())
+    { // implicit assumption
+      fd=ifd;
+    }
+
+    // if a file is found, we mark it as a source file.
+    if (fd)
+    {
+      DString iName = !root->includeName.empty() ?
+                       root->includeName : includeFile;
+      if (!iName.empty()) // user specified include file
+      {
+        if (iName.at(0)=='<') local=false; // explicit override
+        else if (iName.at(0)=='"') local=true;
+        if (iName.at(0)=='"' || iName.at(0)=='<')
+        {
+          iName=iName.mid(1,iName.length()-2); // strip quotes or brackets
+        }
+        if (iName.empty())
+        {
+          iName=fd->name();
+        }
+      }
+      else if (!Config_getList(STRIP_FROM_INC_PATH).empty())
+      {
+        iName=stripFromIncludePath(fd->absFilePath());
+      }
+      else // use name of the file containing the class definition
+      {
+        iName=fd->name();
+      }
+      AUTO_TRACE_ADD("iName={}",iName);
+      if (fd->generateSourceFile()) // generate code for header
+      {
+        def->setIncludeFile(fd,iName,local,!root->includeName.empty());
+      }
+      else // put #include in the class documentation without link
+      {
+        def->setIncludeFile(nullptr,iName,local,true);
+      }
+    }
+  }
+}
+
+
 //----------------------------------------------------------------------------
 
 static Definition *findScopeFromQualifiedName(NamespaceDefMutable *startScope,const DString &n,
@@ -398,6 +501,7 @@ static void buildGroupListFiltered(const Entry *root,bool additional, bool inclu
         {
           root->commandOverrides.apply_groupGraph([&](bool b) { gd->overrideGroupGraph(b); });
         }
+        addIncludeFile(gd,nullptr,root);
       }
       else
       {
@@ -422,6 +526,7 @@ static void buildGroupListFiltered(const Entry *root,bool additional, bool inclu
         gd->setRefItems(root->sli);
         gd->setRequirementReferences(root->rqli);
         gd->setLanguage(root->lang);
+        addIncludeFile(gd,nullptr,root);
         if (root->groupDocType==Entry::GROUPDOC_NORMAL)
         {
           root->commandOverrides.apply_groupGraph([&](bool b) { gd->overrideGroupGraph(b); });
@@ -500,106 +605,6 @@ static void organizeSubGroups(const Entry *root)
   // then process the @addtogroup, @weakgroup blocks
   organizeSubGroupsFiltered(root,true);
 }
-
-//----------------------------------------------------------------------
-
-template<class DefMutable>
-static void addIncludeFile(DefMutable *def,FileDef *ifd,const Entry *root)
-{
-  if (
-      (!root->doc.stripWhiteSpace().empty() ||
-       !root->brief.stripWhiteSpace().empty() ||
-       Config_getBool(EXTRACT_ALL)
-      ) && root->protection!=Protection::Private
-     )
-  {
-    //printf(">>>>>> includeFile=%s\n",qPrint(root->includeFile));
-
-    bool local=Config_getBool(FORCE_LOCAL_INCLUDES);
-    DString includeFile = root->includeFile;
-    if (!includeFile.empty() && includeFile.at(0)=='"')
-    {
-      local = true;
-      includeFile=includeFile.mid(1,includeFile.length()-2);
-    }
-    else if (!includeFile.empty() && includeFile.at(0)=='<')
-    {
-      local = false;
-      includeFile=includeFile.mid(1,includeFile.length()-2);
-    }
-
-    bool ambig = false;
-    FileDef *fd=nullptr;
-    // see if we need to include a verbatim copy of the header file
-    //printf("root->includeFile=%s\n",qPrint(root->includeFile));
-    if (!includeFile.empty() &&
-        (fd=Doxygen::inputNameLinkedMap->findFileDef(includeFile,ambig))==nullptr
-       )
-    { // explicit request
-      DString text;
-      text.sprintf("the name '%s' supplied as "
-                  "the argument of the \\class, \\struct, \\union, or \\headerfile command ",
-                  qPrint(includeFile)
-                 );
-      if (ambig) // name is ambiguous
-      {
-        text+="matches the following input files:\n";
-        text+=Doxygen::inputNameLinkedMap->showFileDefMatches(root->includeFile);
-        text+="\n";
-        text+="Please use a more specific name by "
-            "including a (larger) part of the path!";
-      }
-      else // name is not an input file
-      {
-        text+="is not an input file";
-      }
-      warn(root->fileName,root->startLine, "{}", text);
-    }
-    else if (includeFile.empty() && ifd &&
-        // see if the file extension makes sense
-        EntryType::guessSection(ifd->name()).isHeader())
-    { // implicit assumption
-      fd=ifd;
-    }
-
-    // if a file is found, we mark it as a source file.
-    if (fd)
-    {
-      DString iName = !root->includeName.empty() ?
-                       root->includeName : includeFile;
-      if (!iName.empty()) // user specified include file
-      {
-        if (iName.at(0)=='<') local=false; // explicit override
-        else if (iName.at(0)=='"') local=true;
-        if (iName.at(0)=='"' || iName.at(0)=='<')
-        {
-          iName=iName.mid(1,iName.length()-2); // strip quotes or brackets
-        }
-        if (iName.empty())
-        {
-          iName=fd->name();
-        }
-      }
-      else if (!Config_getList(STRIP_FROM_INC_PATH).empty())
-      {
-        iName=stripFromIncludePath(fd->absFilePath());
-      }
-      else // use name of the file containing the class definition
-      {
-        iName=fd->name();
-      }
-      if (fd->generateSourceFile()) // generate code for header
-      {
-        def->setIncludeFile(fd,iName,local,!root->includeName.empty());
-      }
-      else // put #include in the class documentation without link
-      {
-        def->setIncludeFile(nullptr,iName,local,true);
-      }
-    }
-  }
-}
-
 
 //----------------------------------------------------------------------
 
@@ -2747,6 +2752,7 @@ static MemberDef *addVariableToClass(
   ModuleManager::instance().addMemberToModule(root,md.get());
   mmd->setBodyDef(root->fileDef());
   mmd->addQualifiers(root->qualifiers);
+  addIncludeFile(mmd,root->fileDef(),root);
 
   AUTO_TRACE_ADD("Adding new member '{}' to class '{}'",name,cd->name());
   cd->insertMember(md.get());
@@ -2984,6 +2990,7 @@ static MemberDef *addVariableToFile(
     mmd->setBodyDef(fd);
   }
   addMemberToGroups(root,md.get());
+  addIncludeFile(mmd,fd,root);
   ModuleManager::instance().addMemberToModule(root,md.get());
 
   mmd->setRefItems(root->sli);
@@ -3705,6 +3712,7 @@ static void addInterfaceOrServiceToServiceOrSingleton(
   mmd->setDefinition(def);
   applyMemberOverrideOptions(root,mmd);
   mmd->addQualifiers(root->qualifiers);
+  addIncludeFile(mmd,fd,root);
 
   AUTO_TRACE("Interface member: fileName='{}' type='{}' name='{}' mtype='{}' prot={} virt={} state={} proto={} def='{}'",
       fileName,root->type,rname,type,root->protection,root->virt,root->isStatic,root->proto,def);
@@ -3858,6 +3866,7 @@ static void addMethodToClass(const Entry *root,ClassDefMutable *cd,
   mmd->setBodyDef(fd);
   mmd->setFileDef(fd);
   mmd->addSectionsToDefinition(root->anchors);
+  addIncludeFile(mmd,fd,root);
   DString def;
   DString qualScope = cd->qualifiedNameWithTemplateParameters();
   SrcLangExt lang = cd->getLanguage();
@@ -3953,6 +3962,7 @@ static void addGlobalFunction(const Entry *root,const DString &rname,const DStri
   mmd->setMemberGroupId(root->mGrpId);
   mmd->setRequiresClause(root->req);
   mmd->setExplicitExternal(root->explicitExternal,root->fileName,root->startLine,root->startColumn);
+  addIncludeFile(mmd,fd,root);
 
   NamespaceDefMutable *nd = nullptr;
   // see if the function is inside a namespace that was not part of
@@ -5798,6 +5808,7 @@ static void addMemberDocs(const Entry *root,
   md->mergeMemberSpecifiers(spec);
   md->addSectionsToDefinition(root->anchors);
   addMemberToGroups(root,md);
+  addIncludeFile(md,rfd,root);
   ModuleManager::instance().addMemberToModule(root,md);
   if (cd) cd->insertUsedFile(rfd);
   //printf("root->mGrpId=%d\n",root->mGrpId);
@@ -6273,6 +6284,7 @@ static void addLocalObjCMethod(const Entry *root,
     cd->insertUsedFile(fd);
     mmd->setRefItems(root->sli);
     mmd->setRequirementReferences(root->rqli);
+    addIncludeFile(mmd,fd,root);
 
     MemberName *mn = Doxygen::memberNameLinkedMap->add(root->name);
     mn->push_back(std::move(md));
@@ -6698,6 +6710,7 @@ static void addMemberSpecialization(const Entry *root,
   cd->insertMember(md.get());
   mmd->setRefItems(root->sli);
   mmd->setRequirementReferences(root->rqli);
+  addIncludeFile(mmd,fd,root);
 
   mn->push_back(std::move(md));
 }
@@ -6767,6 +6780,7 @@ static void addOverloaded(const Entry *root,MemberName *mn,
     cd->insertUsedFile(fd);
     mmd->setRefItems(root->sli);
     mmd->setRequirementReferences(root->rqli);
+    addIncludeFile(mmd,fd,root);
 
     mn->push_back(std::move(md));
   }
@@ -7315,6 +7329,7 @@ static void findMember(const Entry *root,
 
             mmd->setTagInfo(root->tagInfo());
 
+            addIncludeFile(mmd,root->fileDef(),root);
             //printf("Related member name='%s' decl='%s' bodyLine='%d'\n",
             //       qPrint(funcName),qPrint(funcDecl),root->bodyLine);
 
@@ -7750,6 +7765,7 @@ static void findEnums(const Entry *root)
       mmd->setRequirementReferences(root->rqli);
       //printf("found enum %s nd=%p\n",qPrint(md->name()),nd);
       bool defSet=false;
+      addIncludeFile(mmd,root->fileDef(),root);
 
       DString baseType = root->args;
       if (!baseType.empty())

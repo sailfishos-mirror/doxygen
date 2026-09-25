@@ -1007,7 +1007,7 @@ void FileDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::MemberDeclStart:
         startMemberDeclarations(ol);
         break;
-      case LayoutDocEntry::FileIncludes:
+      case LayoutDocEntry::Includes:
         writeIncludeFiles(ol);
         break;
       case LayoutDocEntry::FileIncludeGraph:
@@ -1073,7 +1073,6 @@ void FileDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::AuthorSection:
         writeAuthorSection(ol);
         break;
-      case LayoutDocEntry::ClassIncludes:
       case LayoutDocEntry::ClassInheritanceGraph:
       case LayoutDocEntry::ClassNestedClasses:
       case LayoutDocEntry::ClassCollaborationGraph:

@@ -104,6 +104,7 @@ class GroupDef : public DefinitionMutable, public Definition
     virtual const PageLinkedRefMap &getExamples() const = 0;
     virtual bool hasDetailedDescription() const = 0;
     virtual void sortSubGroups() = 0;
+    virtual void setIncludeFile(FileDef *fd,const DString &incName,bool local,bool force) = 0;
 
     // group graph related members
     virtual bool hasGroupGraph() const = 0;

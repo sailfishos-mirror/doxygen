@@ -356,6 +356,7 @@ class MemberDefImpl final : public DefinitionMixin<MemberDefMutable>
     int redefineCount() const override;
     void setRedefineCount(int) override;
     void setClassDefOfAnonymousType(const ClassDef *cd) override;
+    void setIncludeFile(FileDef *fd,const DString &incName,bool local,bool force) override;
 
   private:
     void _computeLinkableInProject();
@@ -409,6 +410,8 @@ class MemberDefImpl final : public DefinitionMixin<MemberDefMutable>
     MemberDef  *m_memDef = nullptr;       // member definition for this declaration
     MemberDef  *m_memDec = nullptr;       // member declaration for this definition
     ClassDef   *m_relatedAlso = nullptr;  // points to class marked by relatedAlso
+                                          //
+    std::unique_ptr<IncludeInfo> m_incInfo;
 
     ExampleList m_examples;     // a dictionary of all examples for quick access
 
@@ -1551,6 +1554,11 @@ std::unique_ptr<MemberDef> MemberDefImpl::deepCopy() const
   result->m_declColumn                     = m_declColumn                     ;
   result->m_numberOfFlowKW                 = m_numberOfFlowKW                 ;
   result->setDefinitionTemplateParameterLists(m_defTmpArgLists);
+  if (m_incInfo)
+  {
+    result->m_incInfo = std::make_unique<IncludeInfo>();
+    *(result->m_incInfo) = *m_incInfo;
+  }
 
   result->m_isLinkableCached    = 0;
   result->m_isConstructorCached = 0;
@@ -2594,6 +2602,7 @@ bool MemberDefImpl::hasDetailedDescription() const
     bool extractStatic         = Config_getBool(EXTRACT_STATIC);
     bool extractPrivateVirtual = Config_getBool(EXTRACT_PRIV_VIRTUAL);
     bool inlineSources         = hasInlineSource();
+    bool includes              = Config_getBool(SHOW_INCLUDE_FILES) && m_incInfo!=nullptr;
 
     // the member has detailed documentation because the user added some comments
     bool docFilter =
@@ -2662,7 +2671,9 @@ bool MemberDefImpl::hasDetailedDescription() const
            // caller graph
            _hasVisibleCallerGraph() ||
            // requirement references
-           hasRequirementRefs();
+           hasRequirementRefs() ||
+           // has \headerfile command
+           includes;
 
     if (!hideUndocMembers) // if HIDE_UNDOC_MEMBERS is NO we also show the detailed section
                            // if there is only some generated info
@@ -3307,53 +3318,87 @@ DString MemberDefImpl::displayDefinition() const
 
 void MemberDefImpl::_writeGroupInclude(OutputList &ol,bool inGroup) const
 {
-  // only write out the include file if this is not part of a class or file
-  // definition
-  bool showGroupedMembInc = Config_getBool(SHOW_GROUPED_MEMB_INC);
-  bool forceLocalIncludes = Config_getBool(FORCE_LOCAL_INCLUDES);
-  const FileDef *fd = getFileDef();
-  DString nm;
-  if (inGroup && fd && showGroupedMembInc)
+  SrcLangExt lang = getLanguage();
+  bool written = false;
+  if (m_incInfo) // explicit \headerfile command
   {
-    if (!Config_getList(STRIP_FROM_INC_PATH).empty())
+    DString nm=m_incInfo->includeName.empty() ?
+      (m_incInfo->fileDef ?
+       m_incInfo->fileDef->docName() : DString()
+      ) : m_incInfo->includeName;
+    if (!nm.empty())
     {
-      nm = stripFromIncludePath(fd->absFilePath());
-    }
-    else
-    {
-      nm = fd->name();
+      ol.startParagraph();
+      ol.startTypewriter();
+      ol.docify(::includeStatement(lang,m_incInfo->kind));
+      ol.docify(::includeOpen(lang,m_incInfo->kind));
+      ol.pushGeneratorState();
+      ol.disable(OutputType::Html);
+      ol.docify(nm);
+      ol.disableAllBut(OutputType::Html);
+      ol.enable(OutputType::Html);
+      if (m_incInfo->fileDef)
+      {
+        ol.writeObjectLink(DString(),m_incInfo->fileDef->includeName(),DString(),nm);
+      }
+      else
+      {
+        ol.docify(nm);
+      }
+      ol.popGeneratorState();
+      ol.docify(::includeClose(lang,m_incInfo->kind));
+      ol.endTypewriter();
+      ol.endParagraph();
+      written = true;
     }
   }
-  if (!nm.empty())
+  if (!written) // only write out the include file if this is not part of a class or file definition
   {
-    ol.startParagraph();
-    ol.startTypewriter();
-    SrcLangExt lang = getLanguage();
-    bool isIDLorJava = lang==SrcLangExt::IDL || lang==SrcLangExt::Java;
-    if (isIDLorJava)
+    bool showGroupedMembInc = Config_getBool(SHOW_GROUPED_MEMB_INC);
+    bool forceLocalIncludes = Config_getBool(FORCE_LOCAL_INCLUDES);
+    const FileDef *fd = getFileDef();
+    DString nm;
+    if (inGroup && fd && showGroupedMembInc)
     {
-      ol.docify("import ");
+      if (!Config_getList(STRIP_FROM_INC_PATH).empty())
+      {
+        nm = stripFromIncludePath(fd->absFilePath());
+      }
+      else
+      {
+        nm = fd->name();
+      }
     }
-    else
+    if (!nm.empty())
     {
-      ol.docify("#include ");
+      ol.startParagraph();
+      ol.startTypewriter();
+      bool isIDLorJava = lang==SrcLangExt::IDL || lang==SrcLangExt::Java;
+      if (isIDLorJava)
+      {
+        ol.docify("import ");
+      }
+      else
+      {
+        ol.docify("#include ");
+      }
+
+      if (isIDLorJava || forceLocalIncludes) ol.docify("\""); else ol.docify("<");
+
+      if (fd && fd->isLinkable())
+      {
+        ol.writeObjectLink(fd->getReference(),fd->getOutputFileBase(),fd->anchor(),nm);
+      }
+      else
+      {
+        ol.docify(nm);
+      }
+
+      if (isIDLorJava || forceLocalIncludes) ol.docify("\""); else ol.docify(">");
+
+      ol.endTypewriter();
+      ol.endParagraph();
     }
-
-    if (isIDLorJava || forceLocalIncludes) ol.docify("\""); else ol.docify("<");
-
-    if (fd && fd->isLinkable())
-    {
-      ol.writeObjectLink(fd->getReference(),fd->getOutputFileBase(),fd->anchor(),nm);
-    }
-    else
-    {
-      ol.docify(nm);
-    }
-
-    if (isIDLorJava || forceLocalIncludes) ol.docify("\""); else ol.docify(">");
-
-    ol.endTypewriter();
-    ol.endParagraph();
   }
 }
 
@@ -6331,6 +6376,18 @@ bool MemberDefImpl::hasUserDocumentation() const
 const ArgumentList &MemberDefImpl::typeConstraints() const
 {
   return m_typeConstraints;
+}
+
+
+void MemberDefImpl::setIncludeFile(FileDef *fd,
+             const DString &includeName,bool local, bool force)
+{
+  if (!force || includeName.empty()) return;
+  //printf("MemberDefImpl::setIncludeFile(%p,%s,%d,%d)\n",fd,includeName,local,force);
+  if (!m_incInfo) m_incInfo = std::make_unique<IncludeInfo>();
+  m_incInfo->fileDef     = fd;
+  m_incInfo->includeName = includeName;
+  m_incInfo->kind        = local ? IncludeKind::IncludeLocal : IncludeKind::IncludeSystem;
 }
 
 bool MemberDefImpl::isFriendToHide() const

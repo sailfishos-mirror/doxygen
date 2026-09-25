@@ -406,6 +406,7 @@ class MemberDefMutable : public DefinitionMutable, public MemberDef
     virtual void addQualifiers(const StringVector &qualifiers) = 0;
 
     virtual void setModuleDef(ModuleDef *mod) = 0;
+    virtual void setIncludeFile(FileDef *fd,const DString &incName,bool local,bool force) = 0;
 
 
     // macro redefinition

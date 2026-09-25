@@ -21,6 +21,7 @@
 // standard includes
 #include <algorithm>
 #include <cctype>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -101,6 +102,7 @@ class GroupDefImpl final : public DefinitionMixin<GroupDef>
     void addRequirementReferences() override;
     void sortMemberLists() override;
     bool subGrouping() const override { return m_subGrouping; }
+    void setIncludeFile(FileDef *fd,const DString &incName,bool local,bool force) override;
 
     void setGroupScope(Definition *d) override { m_groupScope = d; }
     Definition *getGroupScope() const override { return m_groupScope; }
@@ -153,6 +155,7 @@ class GroupDefImpl final : public DefinitionMixin<GroupDef>
     void writeAuthorSection(OutputList &ol);
     void updateLanguage(const Definition *);
     void setGroupTitleLocal( const DString &title);
+    void writeIncludeFiles(OutputList &ol) const;
 
     DString             m_title;               // title of the group
     DString             m_titleAsText;         // title of the group in plain text
@@ -174,6 +177,7 @@ class GroupDefImpl final : public DefinitionMixin<GroupDef>
     MemberGroupList      m_memberGroups;
     bool                 m_subGrouping;
     bool                 m_hasGroupGraph = false;
+    std::map<std::string, IncludeInfo> m_incInfo;
 
 };
 
@@ -589,6 +593,58 @@ void GroupDefImpl::removeMember(MemberDef *md)
     }
   }
 }
+
+void GroupDefImpl::setIncludeFile(FileDef *fd,
+             const DString &includeName,bool local, bool force)
+{
+  //printf("NamespaceDefImpl::setIncludeFile(%p,%s,%d,%d)\n",fd,qPrint(includeName),local,force);
+  if (!force || includeName.empty()) return; // only use header provided via \headerfile
+  auto it = m_incInfo.find(includeName.str());
+  if (it == m_incInfo.end())
+  {
+    m_incInfo.insert(std::make_pair(includeName.str(), IncludeInfo(fd,includeName,local ? IncludeKind::IncludeLocal : IncludeKind::IncludeSystem)));
+  }
+}
+
+void GroupDefImpl::writeIncludeFiles(OutputList &ol) const
+{
+  if (m_incInfo.empty()) return;
+  ol.startParagraph();
+  for (const auto &kv : m_incInfo)
+  {
+    const IncludeInfo &incInfo = kv.second;
+    DString nm=incInfo.includeName.empty() ?
+      (incInfo.fileDef ?
+       incInfo.fileDef->docName() : DString()
+      ) :
+      incInfo.includeName;
+    if (!nm.empty())
+    {
+      ol.startTypewriter();
+      ol.docify(::includeStatement(SrcLangExt::Cpp,incInfo.kind));
+      ol.docify(::includeOpen(SrcLangExt::Cpp,incInfo.kind));
+      ol.pushGeneratorState();
+      ol.disable(OutputType::Html);
+      ol.docify(nm);
+      ol.disableAllBut(OutputType::Html);
+      ol.enable(OutputType::Html);
+      if (incInfo.fileDef)
+      {
+        ol.writeObjectLink(DString(),incInfo.fileDef->includeName(),DString(),nm);
+      }
+      else
+      {
+        ol.docify(nm);
+      }
+      ol.popGeneratorState();
+      ol.docify(::includeClose(SrcLangExt::Cpp,incInfo.kind));
+      ol.endTypewriter();
+      ol.lineBreak();
+    }
+  }
+  ol.endParagraph();
+}
+
 
 bool GroupDefImpl::findGroup(const GroupDef *def) const
 {
@@ -1357,7 +1413,9 @@ void GroupDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::AuthorSection:
         writeAuthorSection(ol);
         break;
-      case LayoutDocEntry::ClassIncludes:
+      case LayoutDocEntry::Includes:
+        writeIncludeFiles(ol);
+        break;
       case LayoutDocEntry::ClassInheritanceGraph:
       case LayoutDocEntry::ClassNestedClasses:
       case LayoutDocEntry::ClassCollaborationGraph:
@@ -1380,7 +1438,6 @@ void GroupDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::FileExceptions:
       case LayoutDocEntry::FileNamespaces:
       case LayoutDocEntry::FileConstantGroups:
-      case LayoutDocEntry::FileIncludes:
       case LayoutDocEntry::FileIncludeGraph:
       case LayoutDocEntry::FileIncludedByGraph:
       case LayoutDocEntry::FileSourceLink:

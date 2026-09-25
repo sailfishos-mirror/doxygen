@@ -618,7 +618,7 @@ void DirDefImpl::writeDocumentation(OutputList &ol)
           }
         }
         break;
-      case LayoutDocEntry::ClassIncludes:
+      case LayoutDocEntry::Includes:
       case LayoutDocEntry::ClassInlineClasses:
       case LayoutDocEntry::ClassInheritanceGraph:
       case LayoutDocEntry::ClassNestedClasses:
@@ -641,7 +641,6 @@ void DirDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::FileExceptions:
       case LayoutDocEntry::FileNamespaces:
       case LayoutDocEntry::FileConstantGroups:
-      case LayoutDocEntry::FileIncludes:
       case LayoutDocEntry::FileIncludeGraph:
       case LayoutDocEntry::FileIncludedByGraph:
       case LayoutDocEntry::FileSourceLink:

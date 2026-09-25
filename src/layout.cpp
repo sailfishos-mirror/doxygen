@@ -806,7 +806,7 @@ static const std::map< std::string, ElementCallbacks > g_elementHandlers =
                                                             [](){ return compileOptions(theTranslator->trDetailedDescription()); })
                                                   } },
   { "class/authorsection",                        { startCb(&LayoutParser::startSimpleEntry,LayoutDocEntry::AuthorSection) } },
-  { "class/includes",                             { startCb(&LayoutParser::startSimpleEntry,LayoutDocEntry::ClassIncludes) } },
+  { "class/includes",                             { startCb(&LayoutParser::startSimpleEntry,LayoutDocEntry::Includes)      } },
   { "class/inheritancegraph",                     { startCb(&LayoutParser::startSimpleEntry,LayoutDocEntry::ClassInheritanceGraph) } },
   { "class/collaborationgraph",                   { startCb(&LayoutParser::startSimpleEntry,LayoutDocEntry::ClassCollaborationGraph) } },
   { "class/allmemberslink",                       { startCb(&LayoutParser::startSimpleEntry,LayoutDocEntry::ClassAllMembersLink) } },
@@ -960,7 +960,7 @@ static const std::map< std::string, ElementCallbacks > g_elementHandlers =
   { "concept/definition",                         { startCb(&LayoutParser::startSectionEntry, LayoutDocEntry::ConceptDefinition,
                                                             []() { return compileOptions(theTranslator->trConceptDefinition()); }),
                                                   } },
-  { "concept/includes",                           { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::ClassIncludes)  } },
+  { "concept/includes",                           { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::Includes)  } },
   { "concept/sourcelink",                         { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::FileSourceLink) } },
   { "concept/detaileddescription",                { startCb(&LayoutParser::startSectionEntry,LayoutDocEntry::DetailedDesc,
                                                             []() { return compileOptions(theTranslator->trDetailedDescription()); })
@@ -974,7 +974,7 @@ static const std::map< std::string, ElementCallbacks > g_elementHandlers =
   { "namespace/detaileddescription",              { startCb(&LayoutParser::startSectionEntry,LayoutDocEntry::DetailedDesc,
                                                             []() { return compileOptions(theTranslator->trDetailedDescription()); })
                                                   } },
-  { "namespace/includes",                         { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::ClassIncludes) } },
+  { "namespace/includes",                         { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::Includes) } },
   { "namespace/authorsection",                    { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::AuthorSection) } },
   { "namespace/memberdecl",                       { startCb(&LayoutParser::startMemberDecl),
                                                     endCb(&LayoutParser::endMemberDecl)
@@ -1074,7 +1074,7 @@ static const std::map< std::string, ElementCallbacks > g_elementHandlers =
                                                             []() { return compileOptions(theTranslator->trDetailedDescription()); })
                                                   } },
   { "file/authorsection",                         { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::AuthorSection)       } },
-  { "file/includes",                              { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::FileIncludes)        } },
+  { "file/includes",                              { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::Includes)            } },
   { "file/includegraph",                          { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::FileIncludeGraph)    } },
   { "file/includedbygraph",                       { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::FileIncludedByGraph) } },
   { "file/sourcelink",                            { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::FileSourceLink)      } },
@@ -1175,6 +1175,7 @@ static const std::map< std::string, ElementCallbacks > g_elementHandlers =
   { "group/detaileddescription",                  { startCb(&LayoutParser::startSectionEntry, LayoutDocEntry::DetailedDesc,
                                                             []() { return compileOptions(theTranslator->trDetailedDescription()); })
                                                   } },
+  { "group/includes",                             { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::Includes)      } },
   { "group/authorsection",                        { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::AuthorSection) } },
   { "group/groupgraph",                           { startCb(&LayoutParser::startSimpleEntry, LayoutDocEntry::GroupGraph)    } },
   { "group/memberdecl",                           { startCb(&LayoutParser::startMemberDecl), endCb(&LayoutParser::endMemberDecl) } },

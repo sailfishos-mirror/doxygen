@@ -189,6 +189,7 @@
   <!-- Layout definition for a group page -->
   <group>
     <briefdescription visible="yes"/>
+    <includes visible="$SHOW_INCLUDE_FILES"/>
     <groupgraph visible="yes"/>
     <memberdecl>
       <nestedgroups visible="yes" title=""/>

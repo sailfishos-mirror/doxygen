@@ -444,7 +444,7 @@ void ModuleDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::AuthorSection:
         writeAuthorSection(ol);
         break;
-      case LayoutDocEntry::ClassIncludes:
+      case LayoutDocEntry::Includes:
       case LayoutDocEntry::ClassInheritanceGraph:
       case LayoutDocEntry::ClassNestedClasses:
       case LayoutDocEntry::ClassCollaborationGraph:
@@ -458,7 +458,6 @@ void ModuleDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::FileExceptions:
       case LayoutDocEntry::FileNamespaces:
       case LayoutDocEntry::FileConstantGroups:
-      case LayoutDocEntry::FileIncludes:
       case LayoutDocEntry::FileIncludeGraph:
       case LayoutDocEntry::FileIncludedByGraph:
       case LayoutDocEntry::FileInlineClasses:

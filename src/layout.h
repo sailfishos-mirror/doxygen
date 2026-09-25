@@ -37,9 +37,9 @@ struct LayoutDocEntry
               ESPEC(MemberDeclStart) ESPEC(MemberDeclEnd) ESPEC(MemberDecl) \
               ESPEC(MemberDefStart) ESPEC(MemberDefEnd) ESPEC(MemberDef) \
               ESPEC(BriefDesc) ESPEC(DetailedDesc) \
-              ESPEC(AuthorSection) \
+              ESPEC(AuthorSection) ESPEC(Includes) \
               /* Class specific items */ \
-              ESPEC(ClassIncludes) ESPEC(ClassInlineClasses) \
+              ESPEC(ClassInlineClasses) \
               ESPEC(ClassInheritanceGraph) ESPEC(ClassNestedClasses) \
               ESPEC(ClassCollaborationGraph) ESPEC(ClassAllMembersLink) \
               ESPEC(ClassUsedFiles) \
@@ -51,7 +51,7 @@ struct LayoutDocEntry
               ESPEC(NamespaceInlineClasses) \
               /* File specific items */ \
               ESPEC(FileClasses) ESPEC(FileConcepts) ESPEC(FileInterfaces) ESPEC(FileStructs) ESPEC(FileExceptions) ESPEC(FileConstantGroups) ESPEC(FileNamespaces) \
-              ESPEC(FileIncludes) ESPEC(FileIncludeGraph) \
+              ESPEC(FileIncludeGraph) \
               ESPEC(FileIncludedByGraph) ESPEC(FileSourceLink) \
               ESPEC(FileInlineClasses) \
               /* C++20 Modules */ \

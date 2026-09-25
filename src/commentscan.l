@@ -1513,6 +1513,10 @@ STopt  [^\n@\\]*
                                         }
 <ClassDocArg3>{DOCNL}                   {
                                           //if (*yytext=='\n') yyextra->lineNr++;
+                                          if (yyextra->current->includeFile!="<>")
+                                          {
+                                            yyextra->current->includeName = yyextra->current->includeFile;
+                                          }
                                           unput_string(yytext,yyleng);
                                           BEGIN( Comment );
                                         }

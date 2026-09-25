@@ -2785,7 +2785,7 @@ void ClassDefImpl::writeDocumentationContents(OutputList &ol,const DString & /*p
       case LayoutDocEntry::BriefDesc:
         writeBriefDescription(ol,exampleFlag);
         break;
-      case LayoutDocEntry::ClassIncludes:
+      case LayoutDocEntry::Includes:
         if (lang==SrcLangExt::Slice)
         {
           writeIncludeFilesForSlice(ol);
@@ -2881,7 +2881,6 @@ void ClassDefImpl::writeDocumentationContents(OutputList &ol,const DString & /*p
       case LayoutDocEntry::FileExceptions:
       case LayoutDocEntry::FileNamespaces:
       case LayoutDocEntry::FileConstantGroups:
-      case LayoutDocEntry::FileIncludes:
       case LayoutDocEntry::FileIncludeGraph:
       case LayoutDocEntry::FileIncludedByGraph:
       case LayoutDocEntry::FileSourceLink:

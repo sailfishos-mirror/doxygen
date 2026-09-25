@@ -639,7 +639,7 @@ void ConceptDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::AuthorSection:
         writeAuthorSection(ol);
         break;
-      case LayoutDocEntry::ClassIncludes:
+      case LayoutDocEntry::Includes:
         writeIncludeFiles(ol);
         break;
       case LayoutDocEntry::MemberDeclStart:
@@ -670,7 +670,6 @@ void ConceptDefImpl::writeDocumentation(OutputList &ol)
       case LayoutDocEntry::FileExceptions:
       case LayoutDocEntry::FileNamespaces:
       case LayoutDocEntry::FileConstantGroups:
-      case LayoutDocEntry::FileIncludes:
       case LayoutDocEntry::FileIncludeGraph:
       case LayoutDocEntry::FileIncludedByGraph:
       case LayoutDocEntry::FileInlineClasses:
