@@ -10387,6 +10387,10 @@ static void computeVerifiedDotPath()
         dotPath = "dot";
         dotPath += Portable::commandExtension();
       }
+      else if (dp.isRelative())
+      {
+        dotPath = fi.dirPath() + "/" + dotPath;
+      }
     }
 #if defined(_WIN32) // convert slashes
     size_t l=dotPath.length();
